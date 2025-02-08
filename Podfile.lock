@@ -1,6 +1,6 @@
 PODS:
   - GoNativeCore (2.4.1):
-    - GoNativeCore/Binary (= 2.4.1)
+  - GoNativeCore/Binary (= 2.4.1)
   - GoNativeCore/Binary (2.4.1)
   - MedianIcons (1.0.8)
   - SSZipArchive (2.4.3)
@@ -11,7 +11,7 @@ DEPENDENCIES:
   - SSZipArchive
 
 SPEC REPOS:
-  "git@github.com:gonativeio/gonative-specs.git":
+  "git@github.com:Snap385/specs.git":
     - GoNativeCore
     - MedianIcons
   trunk:
