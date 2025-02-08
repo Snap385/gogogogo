@@ -2,6 +2,7 @@
 platform :ios, '13.0'
 
 source 'https://cdn.cocoapods.org/'
+source 'git@github.com:CocoaPods/Specs.git'
 
 require_relative './plugins.rb'
 
@@ -11,7 +12,7 @@ target default_app_target do
 
   # Pods for GonativeIO
   pod 'GoNativeCore'
-  pod 'GoNativeIcons'
+  pod 'GonativeIcons'
   pod 'SSZipArchive'
   
   use_plugins!
