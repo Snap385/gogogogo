@@ -1,26 +1,40 @@
-name: Xcode - Build and Analyze
+# This is a basic workflow to help you get started with Actions
 
+name: deploy-prod
+
+# Controls when the action will run.
 on:
+  # Triggers the workflow on push or pull request events but only for the main branch
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
 
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  build:
-    name: Build and analyse default scheme using xcodebuild command
+  # This workflow contains a single job called "build"
+  build-and-analyze:
+    # The type of runner that the job will run on
     runs-on: macos-latest
 
+    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      # Step to check out the code from the repository
       - name: Checkout
         uses: actions/checkout@v4
+
+      # Step to determine the default scheme of the project
       - name: Set Default Scheme
         run: |
           scheme_list=$(xcodebuild -list -json | tr -d "\n")
           default=$(echo $scheme_list | ruby -e "require 'json'; puts JSON.parse(STDIN.gets)['project']['targets'][0]")
           echo $default | cat >default
           echo Using default scheme: $default
-      - name: Build
+
+      # Step to build and analyze the project
+      - name: Build and Analyze
         env:
           scheme: ${{ 'default' }}
         run: |
@@ -28,3 +42,50 @@ jobs:
           if [ "`ls -A | grep -i \\.xcworkspace\$`" ]; then filetype_parameter="workspace" && file_to_build="`ls -A | grep -i \\.xcworkspace\$`"; else filetype_parameter="project" && file_to_build="`ls -A | grep -i \\.xcodeproj\$`"; fi
           file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
           xcodebuild clean build analyze -scheme "$scheme" -"$filetype_parameter" "$file_to_build" | xcpretty && exit ${PIPESTATUS[0]}
+
+  # Deploy to build server job (if needed)
+  deploy-prod:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Extract tag name (if necessary for deployment)
+      - name: Extract tag name
+        shell: bash
+        run: echo "##[set-output name=tag;]$(echo ${GITHUB_REF#refs/tags/})"
+        id: extract_tag
+
+      # Deploy the build to a server (adjust as needed)
+      - name: Deploy to build servers
+        env:
+          SSH_PRIVATE_KEY: ${{secrets.SSH_PRIVATE_KEY}}
+          SSH_KNOWN_HOSTS: ${{secrets.SSH_KNOWN_HOSTS}}
+          SSH_KEY_PATH: ${{ github.workspace }}/../private.key
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_PRIVATE_KEY" > $SSH_KEY_PATH
+          sudo chmod 600 $SSH_KEY_PATH
+          echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          echo "Deploying build to server"
+
+          cat > deploy.sh << 'END'
+            #!/bin/bash
+            set -e
+            
+            cd ~/prod/build2
+            git checkout -- .
+            git fetch
+            echo "Checking out ${{ steps.extract_tag.outputs.tag }}"
+            git checkout ${{ steps.extract_tag.outputs.tag }}
+            npm install
+
+            echo "Stopping builder"
+            forever stopall
+
+            echo "Starting builder"
+            ./prod-forever.sh 2
+            
+            echo "Deployed prod"
+          END
+
+          scp -i $SSH_KEY_PATH deploy.sh builder@build4.gonative.io:deploy.sh
+          ssh -i $SSH_KEY_PATH builder@build4.gonative.io bash --login ./deploy.sh
