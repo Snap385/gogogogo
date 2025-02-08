@@ -11,7 +11,7 @@ DEPENDENCIES:
   - SSZipArchive
 
 SPEC REPOS:
-  "git@github.com:Snap385/specs.git":
+  "https://cdn.cocoapods.org/":
     - GoNativeCore
     - MedianIcons
   trunk:
